@@ -10,6 +10,7 @@ import java.nio.channels.FileChannel
 
 class FaceEmbeddingHelper(context: Context) {
 
+
     private val interpreter: Interpreter
 
     init {
@@ -17,7 +18,7 @@ class FaceEmbeddingHelper(context: Context) {
     }
 
     private fun loadModelFile(context: Context): MappedByteBuffer {
-        val fileDescriptor = context.assets.openFd("mobilefacenet.tflite")
+        val fileDescriptor = context.assets.openFd("facenet.tflite")
         val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
         val fileChannel = inputStream.channel
         val startOffset = fileDescriptor.startOffset
@@ -47,12 +48,24 @@ class FaceEmbeddingHelper(context: Context) {
         }
 
         // Output embedding (MobileFaceNet = 192)
-        val output = Array(1) { FloatArray(192) }
+        val outShape = interpreter.getOutputTensor(0).shape()
+        val embSize = outShape[1]
+
+        val output = Array(1) { FloatArray(embSize) }
 
         interpreter.run(input, output)
 
-        return output[0]
+        return normalize(output[0])
+
     }
+
+    private fun normalize(v: FloatArray): FloatArray {
+        var sum = 0f
+        for (x in v) sum += x * x
+        val norm = kotlin.math.sqrt(sum)
+        return FloatArray(v.size) { v[it] / norm }
+    }
+
 }
 
 
